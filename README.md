@@ -15,4 +15,5 @@ the 40th International Conference on Very Large Data Bases (VLDB'14), Hangzhou, 
 3. Takuya Akiba: http://www-imai.is.s.u-tokyo.ac.jp/~takiba/ (i used to get slides in his page but now you have to try emails)
 4. https://github.com/iwiwi/pruned-landmark-labeling (takuya's githubpage for pll)
 5. Minhao Jiang: http://www.cse.ust.hk/~raywong/ (actually it is his supervisor's homepage, but you can find every sources you need)
-6. Cohen, E., Halperin, E., Kaplan, H., & Zwick, U. (2003). Reachability and distance queries via 2-hop labels. SIAM Journal on Computing, 32(5), 1338-1355.
+6. Cohen, Edith, et al. "Reachability and distance queries via 2-hop labels." SIAM Journal on Computing 32.5 (2003): 1338-1355.
+APA.	
