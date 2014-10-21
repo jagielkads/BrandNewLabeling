@@ -56,6 +56,9 @@ class BNLabel {
 	
 	index_t *index_;
 	
+	public:	
+	void quick_sort(std::pair<std::vector<int>, std::vector<uint8_t> > &pair_array, int first, int last);
+	int binary_search(const std::vector<int> &array, const int &key, const int &low, const int & high);
 };
 
 template<int kNumBitParallelRoots>
@@ -321,9 +324,9 @@ bool BNLabel<kNumBitParallelRoots>
 	std::vector<std::pair<std::vector<int>, std::vector<uint8_t> > >
 		all_idx(V); //all labels
 	std::vector<std::pair<std::vector<int>, std::vector<uint8_t> > >
-		tmp1_idx(V); //prev labels
+		prev_idx(V); //prev labels
 	std::vector<std::pair<std::vector<int>, std::vector<uint8_t> > >
-		tmp2_idx(V); //prev labels
+		cur_idx(V); //cur labels
 	int pnum;
 	//std::vector<bool> vis(V);
 	//std::vector<int> que(V);
@@ -336,196 +339,218 @@ bool BNLabel<kNumBitParallelRoots>
 		std::pair<std::vector<int>, std::vector<uint8_t> >
 			&all_idx_v = all_idx[v];
 		std::pair<std::vector<int>, std::vector<uint8_t> >
-			&tmp2_idx_v = tmp2_idx[v];
+			&prev_idx_v = prev_idx[v];
 		
 		all_idx_v.first.push_back(v);
 		all_idx_v.second.push_back(0);
-		tmp2_idx_v.first.push_back(v);
-		tmp2_idx_v.second.push_back(0);
+		prev_idx_v.first.push_back(v);
+		prev_idx_v.second.push_back(0);
 		pnum++;	
 		for(int r = 0; r < adj[v].size(); r++){
 			int w = adj[v][r];
 			if(w < v){//only push higher-rank label into V
 				all_idx_v.first.push_back(w);
 				all_idx_v.second.push_back(1);
-				tmp2_idx_v.first.push_back(w);
-				tmp2_idx_v.second.push_back(1);
+				prev_idx_v.first.push_back(w);
+				prev_idx_v.second.push_back(1);
 				pnum++;
 			}
 		}
 	}	
 	
-	std::vector<std::pair<std::vector<int>, std::vector<uint8_t> > >
-		&prev_idx = tmp2_idx;
-	std::vector<std::pair<std::vector<int>, std::vector<uint8_t> > >
-		&cur_idx = tmp1_idx;
-	std::cout<<pnum<<std::endl;
-	int curnum = 0;
+	int iteration = 0;
 	//iteration till the end
 	while(pnum!=0){
-		//sorting the prev and all labels (to save the labeling cost
-		std::cout<<"1st sorting,pnum:"<<pnum<<std::endl;
+		std::cout<<++iteration<<" iteration go."<<std::endl;
+		pnum = 0;
+		double itert,sortt, gent, prunt;
+		itert = -GetCurrentTimeSec();
+		sortt = -GetCurrentTimeSec();
+		///quicksort for all idx
+		//for(int u = 0; u < V; u++)
+		//	quick_sort(all_idx[u], 0, all_idx[u].first.size()-1);
 		for(int v = 0; v < V; v++){
 			std::pair<std::vector<int>, std::vector<uint8_t> >	
 				&all_idx_v = all_idx[v];
-			std::pair<std::vector<int>, std::vector<uint8_t> >	
-				&prev_idx_v = prev_idx[v];
 			std::vector<std::pair<int, uint8_t> > all_idx_v_pair(all_idx_v.first.size());
-			std::vector<std::pair<int, uint8_t> > prev_idx_v_pair(prev_idx_v.first.size());
 			for(int r = 0; r < all_idx_v.first.size(); r++){
 				all_idx_v_pair[r] = std::make_pair(all_idx_v.first[r], all_idx_v.second[r]);
-			}	
-			for(int r = 0; r < prev_idx_v.first.size(); r++){
-				prev_idx_v_pair[r] = std::make_pair(prev_idx_v.first[r], prev_idx_v.second[r]);
-			}	
+			}
 			std::sort(all_idx_v_pair.begin(),all_idx_v_pair.end());
-			std::sort(prev_idx_v_pair.begin(),prev_idx_v_pair.end());
 			for(int r = 0; r < all_idx_v.first.size(); r++){
 				all_idx_v.first[r] = all_idx_v_pair[r].first;
 				all_idx_v.second[r] = all_idx_v_pair[r].second;
 			}	
-			for(int r = 0; r < prev_idx_v.first.size(); r++){
-				prev_idx_v.first[r] = prev_idx_v_pair[r].first;
-				prev_idx_v.second[r] = prev_idx_v_pair[r].second;
-			}	
 		}
-		std::cout<<"Generating By Rules, prev num:"<<pnum<<std::endl;
-		double hdtime = -GetCurrentTimeSec();
-		pnum = 0;
-		curnum = 0;
-		for(int v = 0; v < V; v++){
-			std::pair<std::vector<int>, std::vector<uint8_t> >
-				&prev_idx_v = prev_idx[v];
-			std::pair<std::vector<int>, std::vector<uint8_t> >
-				&all_idx_v = all_idx[v];
-			//Rule 1 & Rule 4
-			if(prev_idx_v.first[prev_idx_v.first.size()-1] <= all_idx_v.first[0]){
-			
-			}else{
-				for(int r = 0; r < prev_idx_v.first.size(); r++){
-					int s = prev_idx_v.first[r];//(s,s_d) from prev L(v)
-					uint8_t s_d = prev_idx_v.second[r];
-					for(int j = 0; j < all_idx_v.first.size(); j++){
-						int t = all_idx_v.first[j];//(t,t_d) from L(v)
-						uint8_t t_d = all_idx_v.second[j];
-						if( s > t){// r(s) < r(t) to generate (t,s_d+t_d) in L(s)
-							cur_idx[s].first.push_back(t);
-							cur_idx[s].second.push_back(s_d+t_d);
-							curnum++;
-						}
-					}		
-				}
+		//inverse label
+		std::vector<std::pair<std::vector<int>, std::vector<uint8_t> > >
+			inv_all_idx(V);
+		for(int u = 0; u < V; u++){
+			for(int v = 0; v < all_idx[u].first.size(); v++){
+				inv_all_idx[all_idx[u].first[v]].first.push_back(u);
+				inv_all_idx[all_idx[u].first[v]].second.push_back(all_idx[u].second[v]);
 			}
-			//Rule 2 & Rule 5
-			for(int r = 0; r < all_idx_v.first.size(); r++){
-				int s = all_idx_v.first[r];//(s,s_d) from L(v)
-				uint8_t s_d = all_idx_v.second[r];
-				std::pair<std::vector<int>, std::vector<uint8_t> >
-					&prev_idx_s = prev_idx[s];
-				if(v <= prev_idx_s.first[0]){
-				}else{
-					for(int j = 0; j < prev_idx_s.first.size(); j++){
-						int t = prev_idx_s.first[j];//(t,t_d) from prev L(s)
-						uint8_t t_d = prev_idx_s.second[j];
-						if(v > t){//if r(v) < r(t) to generate (t, s_d+t_d) in L(v)
-							cur_idx[v].first.push_back(t);
-							cur_idx[v].second.push_back(s_d+t_d);
-							curnum++;
+		}
+		std::cout<<"Label sorting time:"<<sortt+GetCurrentTimeSec()<<std::endl;
+
+		gent = -GetCurrentTimeSec();
+		//Label Generation	
+		for(int u = 0; u < V; u++){/*{{{*/
+			std::pair<std::vector<int>, std::vector<uint8_t> >
+				&prev_idx_u = prev_idx[u];		
+			std::pair<std::vector<int>, std::vector<uint8_t> >
+				&all_idx_u = all_idx[u];
+			std::pair<std::vector<int>, std::vector<uint8_t> >
+				&inv_all_idx_u = inv_all_idx[u];
+			
+			for(int i1 = 0; i1 < prev_idx_u.first.size(); i1++){
+				int v1 = prev_idx_u.first[i1]; // L(u): u <-> v1
+				uint8_t d1 = prev_idx_u.second[i1];
+
+				//Generating by Rule 1
+				for(int i2 = 0; i2 < all_idx_u.first.size(); i2++){
+					int v2 = all_idx_u.first[i2];//L(u): u <-> v2
+					uint8_t d2 = all_idx_u.second[i2];
+					if(v1 != v2){// generating label of v1 <-> v2
+						int vidx, vlb;
+						uint8_t dlb = d1 + d2;
+						vidx = v1 > v2? v1: v2;
+						vlb = v1 < v2? v1: v2;
+						std::pair<std::vector<int>, std::vector<uint8_t> >
+							&cur_idx_vidx = cur_idx[vidx];
+						int loc = binary_search(cur_idx_vidx.first, vlb, 0, cur_idx_vidx.first.size());
+						if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//not duplicates,generating new label
+							std::vector<int>::iterator fit = cur_idx_vidx.first.begin();
+							std::vector<uint8_t>::iterator sit = cur_idx_vidx.second.begin(); 
+							cur_idx_vidx.first.insert(fit+loc,vlb);
+							cur_idx_vidx.second.insert(sit+loc,dlb);
 						}
 					}
-				}
-			}
-		}
-		//sorting the cur and all labels (to save the pruning cost
-		std::cout<<"2nd sorting,curnum:"<<curnum<<std::endl;
-		for(int v = 0; v < V; v++){
-			std::pair<std::vector<int>, std::vector<uint8_t> >	
-				&all_idx_v = all_idx[v];
-			std::pair<std::vector<int>, std::vector<uint8_t> >	
-				&cur_idx_v = cur_idx[v];
-			std::vector<std::pair<int, uint8_t> > all_idx_v_pair(all_idx_v.first.size());
-			std::vector<std::pair<int, uint8_t> > cur_idx_v_pair(cur_idx_v.first.size());
-			for(int r = 0; r < all_idx_v.first.size(); r++){
-				all_idx_v_pair[r] = std::make_pair(all_idx_v.first[r], all_idx_v.second[r]);
-			}	
-			for(int r = 0; r < cur_idx_v.first.size(); r++){
-				cur_idx_v_pair[r] = std::make_pair(cur_idx_v.first[r], cur_idx_v.second[r]);
-			}	
-			std::sort(all_idx_v_pair.begin(),all_idx_v_pair.end());
-			std::sort(cur_idx_v_pair.begin(),cur_idx_v_pair.end());
-			for(int r = 0; r < all_idx_v.first.size(); r++){
-				all_idx_v.first[r] = all_idx_v_pair[r].first;
-				all_idx_v.second[r] = all_idx_v_pair[r].second;
-			}	
-			for(int r = 0; r < cur_idx_v.first.size(); r++){
-				cur_idx_v.first[r] = cur_idx_v_pair[r].first;
-				cur_idx_v.second[r] = cur_idx_v_pair[r].second;
-			}	
-		}
+				}		
 
-		std::cout<<"Pruning,curnum:"<<curnum<<std::endl;
-		//Label Pruning
-		//clear prev labels
-		for(int v = 0; v < V; v++){
-			prev_idx[v].first.clear();
-			prev_idx[v].second.clear();	
+				//Generating by Rule 2
+				for(int i2 = 0; i2 < inv_all_idx_u.first.size(); i2++){
+					int v2 = inv_all_idx_u.first[i2];//L[v2]: v2 <-> u
+					uint8_t d2 = inv_all_idx_u.second[i2];
+					if(v1 != v2){//generating label of v1 <-> v2
+						int vidx, vlb;
+						uint8_t dlb = d1 + d2;
+						vidx = v1 > v2? v1: v2;
+						vlb = v1 < v2? v1: v2;
+						std::pair<std::vector<int>, std::vector<uint8_t> >
+							&cur_idx_vidx = cur_idx[vidx];
+						int loc = binary_search(cur_idx_vidx.first, vlb, 0, cur_idx_vidx.first.size());
+						if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//not duplicates,generating new label
+							std::vector<int>::iterator fit = cur_idx_vidx.first.begin();
+							std::vector<uint8_t>::iterator sit = cur_idx_vidx.second.begin(); 
+							cur_idx_vidx.first.insert(fit+loc,vlb);
+							cur_idx_vidx.second.insert(sit+loc,dlb);
+						}
+					}
+				}	
+			}
+		}/*}}}*/
+		std::cout<<"Label Generaton time:"<<gent+GetCurrentTimeSec()<<std::endl;
+
+		//Clearing prev label
+		for(int u = 0; u < V; u++){
+			prev_idx[u].first.clear();
+			prev_idx[u].second.clear();
 		}
-		for(int v = 0; v < V; v++){
+		
+		prunt = -GetCurrentTimeSec();	
+		//Label Pruning
+		for(int u = 0; u < V; u++){/*{{{*/
 			std::pair<std::vector<int>, std::vector<uint8_t> >
-				&cur_idx_v = cur_idx[v];		
-			for(int r = 0; r < cur_idx_v.first.size(); r++){
-				int s = cur_idx_v.first[r];// s<->v, d from L(v)
-				int s_d = cur_idx_v.second[r];
-										
+				&all_idx_u = all_idx[u], &prev_idx_u = prev_idx[u], &cur_idx_u = cur_idx[u];
+			for(int i = 0; i < cur_idx_u.first.size(); i++){
+				int tv = cur_idx_u.first[i];		
+				int td = cur_idx_u.second[i];
+				
 				std::pair<std::vector<int>, std::vector<uint8_t> >
-					&all_idx_v = all_idx[v];		
-				std::pair<std::vector<int>, std::vector<uint8_t> >
-					&all_idx_s = all_idx[s];		
+					&all_idx_v = all_idx[i];
 				int dmin = INT_MAX;
-				//for(int j = 0; j < all_idx_v.first.size(); j++){
-				//	for(int q = 0; q < all_idx_s.first.size(); q++){
-				//		if(all_idx_v.first[j] == all_idx_s.first[q]){
-				//			int dcur = all_idx_v.second[j] + all_idx_s.second[q];
-				//			if(dcur < dmin)
-				//				dmin = dcur;
-				//			if(dmin < s_d)
-				//				break;
-				//		}
-				//	}
-				//	if(dmin < s_d)
-				//		break;
-				//}	
-				for(int i1 = 0, i2 = 0; ; ){
-					if( i1 == all_idx_v.first.size() || i2 == all_idx_s.first.size() || dmin < s_d ) break;
-					int v1 = all_idx_v.first[i1], v2 = all_idx_s.first[i2];
-					if(v1 == v2){
-						int dt = all_idx_v.second[i1] + all_idx_s.second[i2];
-						if(dt < dmin)	dmin = dt;
+				for(int i1 = 0, i2 = 0; ;){
+					if(i1==all_idx_u.first.size() || i2==all_idx_v.first.size() || dmin < td) break;
+					int v1 = all_idx_u.first[i1], v2 = all_idx_v.first[i2];
+					if( v1 == v2 ){
+						int dd = all_idx_u.second[i1] + all_idx_v.second[i2];
+						if(dd < dmin) dmin = dd;
 						i1++;
 						i2++;
-					}else{//(v1!=v2)
+					} else{
 						i1 += v1 < v2 ? 1 : 0;
-						i2 += v1 > v2 ? 1 : 0;	
+						i2 += v1 > v2 ? 1 : 0;
 					}
 				}
-				if(dmin > s_d){//not pruned
-					prev_idx[v].first.push_back(s);
-					prev_idx[v].second.push_back(s_d);
-					all_idx[v].first.push_back(s);
-					all_idx[v].second.push_back(s_d);
+				if(dmin > td){//not pruned
+					prev_idx_u.first.push_back(tv);
+					prev_idx_u.second.push_back(td);
+					all_idx_u.first.push_back(tv);
+					all_idx_u.second.push_back(td);
 					pnum++;
-				}//else //pruned
+				}
 			}
-			
-			//std::cout<<v<<":"<<V<<":"<<pnum<<std::endl;
-			cur_idx_v.first.clear();
-			cur_idx_v.second.clear();
-			
-		}
-		std::cout<<hdtime+GetCurrentTimeSec()<<std::endl;
+			cur_idx_u.first.clear();
+			cur_idx_u.second.clear();
+		}/*}}}*/
+		std::cout<<"Label Pruning time:"<<prunt+GetCurrentTimeSec()<<std::endl;
+		std::cout<<"Time in this iteration:"<<itert+GetCurrentTimeSec()<<std::endl;
+		std::cout<<"prev num:"<<pnum<<std::endl;
 	}	
 
 	return true;
 }
 
+template<int kNumBitParallelRoots>
+void BNLabel<kNumBitParallelRoots>
+::quick_sort(std::pair<std::vector<int>, std::vector<uint8_t> > &pair_array, int first, int last){
+	if(first < 0 || last < 0 || first >= pair_array.first.size() || first >= pair_array.second.size() || 
+			pair_array.first.size() != pair_array.second.size() ) return;
+	if(first != last){
+		int left = first;
+		int right = last;
+		int pivot = left++;
+		while(left != right){
+			if(pair_array.first[left] < pair_array.first[pivot]){
+				++left;
+			} else {
+				while(left != right && pair_array.first[pivot] < pair_array.first[right]) --right;
+				int tmp_first = pair_array.first[left];
+				uint8_t tmp_second = pair_array.second[left];
+				pair_array.first[left] = pair_array.first[right];
+				pair_array.second[left] = pair_array.second[right];
+				pair_array.first[right] = tmp_first;
+				pair_array.second[right] = tmp_second;
+			}
+		}
+
+		--left;
+		int tmp_first = pair_array.first[left];
+		uint8_t tmp_second = pair_array.second[left];
+		pair_array.first[left] = pair_array.first[pivot];
+		pair_array.second[left] = pair_array.second[pivot];
+		pair_array.first[pivot] = tmp_first;
+		pair_array.second[pivot] = tmp_second;
+
+		quick_sort(pair_array, first, left);
+		quick_sort(pair_array, right, last);
+	}	
+}
+
+template<int kNumBitParallelRoots>
+int BNLabel<kNumBitParallelRoots>
+::binary_search(const std::vector<int> &array, const int &key, const int &low, const int & high){
+	int imax = high-1, imin = low;
+	while(imax >= imin){
+		int imid = imin + (imax-imin)/2;
+		if(array[imid] == key)
+			return imid;
+		else if (array[imid] < key)
+			imin = imid + 1;
+		else
+			imax = imid - 1;
+	}
+	return imin;		
+}
 #endif //PLLABELING_H
