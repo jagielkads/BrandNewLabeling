@@ -18,4 +18,5 @@ int main(int argc, char** argv){
 	hdl.DegreeOrdering(adj, inv);
 	
 	hdl.ConstructHDIndex(adj, inv);		
+	hdl.StoreIndex("111");
 }

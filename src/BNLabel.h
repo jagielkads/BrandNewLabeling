@@ -255,13 +255,22 @@ bool BNLabel<kNumBitParallelRoots>
 template<int kNumBitParallelRoots>
 bool BNLabel<kNumBitParallelRoots>
 ::StoreIndex(const char *filename){
-  std::ofstream ofs(filename);
-  uint32_t num_v = num_v_;//, num_bpr = kNumBitParallelRoots;
-  ofs.write((const char*)&num_v,   sizeof(num_v));
+	int &V = this->num_v_;
+ 	for(int v = 0; v < V; v++){
+		int count = 0;
+		while(1){
+			if(index_[v].spt_v[count++] == V)
+				break;
+		}		
+		std::cout<<count<<std::endl;
+	}	
+  //std::ofstream ofs(filename);
+  //uint32_t num_v = num_v_;//, num_bpr = kNumBitParallelRoots;
+  //ofs.write((const char*)&num_v,   sizeof(num_v));
   //ofs.write((const char*)&num_bpr, sizeof(num_bpr));
 
-  for (int v = 0; v < num_v_; ++v) {
-		index_t &idx = index_[v];
+  //for (int v = 0; v < num_v_; ++v) {
+//		index_t &idx = index_[v];
 
 		//for (int i = 0; i < kNumBitParallelRoots; ++i) {
 		//int8_t d = idx.bpspt_d[i];
@@ -272,17 +281,17 @@ bool BNLabel<kNumBitParallelRoots>
 		//ofs.write((const char*)&b, sizeof(b));
 		//}
 
-		int32_t s;
-		for (s = 1; idx.spt_v[s - 1] != num_v; ++s) continue;  // Find the sentinel
-		ofs.write((const char*)&s, sizeof(s));
-		for (int i = 0; i < s; ++i) {
-		int32_t l = idx.spt_v[i];
-		int8_t  d = idx.spt_d[i];
-		ofs.write((const char*)&l, sizeof(l));
-		ofs.write((const char*)&d, sizeof(d));
-		}
+//		int32_t s;
+//		for (s = 1; idx.spt_v[s - 1] != num_v; ++s) continue;  // Find the sentinel
+//		ofs.write((const char*)&s, sizeof(s));
+//		for (int i = 0; i < s; ++i) {
+//		int32_t l = idx.spt_v[i];
+//		int8_t  d = idx.spt_d[i];
+//		ofs.write((const char*)&l, sizeof(l));
+//		ofs.write((const char*)&d, sizeof(d));
+//		}
   
-	}
+//	}
 }
 
 template<int kNumBitParallelRoots>
@@ -366,7 +375,7 @@ bool BNLabel<kNumBitParallelRoots>
 		double itert,sortt, gent, prunt;
 		itert = -GetCurrentTimeSec();
 		sortt = -GetCurrentTimeSec();
-		///quicksort for all idx
+		//quicksort for all idx
 		//for(int u = 0; u < V; u++)
 		//	quick_sort(all_idx[u], 0, all_idx[u].first.size()-1);
 		for(int v = 0; v < V; v++){
@@ -411,7 +420,7 @@ bool BNLabel<kNumBitParallelRoots>
 				for(int i2 = 0; i2 < all_idx_u.first.size(); i2++){
 					int v2 = all_idx_u.first[i2];//L(u): u <-> v2
 					uint8_t d2 = all_idx_u.second[i2];
-					if(v1 != v2){// generating label of v1 <-> v2
+					if(v1 != v2 && v1 > v2){// generating label of v1 <-> v2, r(v1) < r(v2)
 						int vidx, vlb;
 						uint8_t dlb = d1 + d2;
 						vidx = v1 > v2? v1: v2;
@@ -432,7 +441,7 @@ bool BNLabel<kNumBitParallelRoots>
 				for(int i2 = 0; i2 < inv_all_idx_u.first.size(); i2++){
 					int v2 = inv_all_idx_u.first[i2];//L[v2]: v2 <-> u
 					uint8_t d2 = inv_all_idx_u.second[i2];
-					if(v1 != v2){//generating label of v1 <-> v2
+					if(v1 != v2 && v1 > v2){//generating label of v1 <-> v2
 						int vidx, vlb;
 						uint8_t dlb = d1 + d2;
 						vidx = v1 > v2? v1: v2;
@@ -467,8 +476,11 @@ bool BNLabel<kNumBitParallelRoots>
 				int tv = cur_idx_u.first[i];		
 				int td = cur_idx_u.second[i];
 				
+				//std::pair<std::vector<int>, std::vector<uint8_t> >
+				//	&all_idx_v = all_idx[i];
 				std::pair<std::vector<int>, std::vector<uint8_t> >
-					&all_idx_v = all_idx[i];
+					&all_idx_v = all_idx[tv];
+
 				int dmin = INT_MAX;
 				for(int i1 = 0, i2 = 0; ;){
 					if(i1==all_idx_u.first.size() || i2==all_idx_v.first.size() || dmin < td) break;
@@ -498,6 +510,23 @@ bool BNLabel<kNumBitParallelRoots>
 		std::cout<<"Time in this iteration:"<<itert+GetCurrentTimeSec()<<std::endl;
 		std::cout<<"prev num:"<<pnum<<std::endl;
 	}	
+	for(int v = 0 ; v < V; v++){
+		int k = all_idx[v].first.size() + 1;
+		index_[inv[v]].spt_v = (uint32_t*) malloc( k * sizeof(uint32_t));
+		index_[inv[v]].spt_d = (uint8_t*) malloc( k * sizeof(uint8_t));
+		if(!index_[inv[v]].spt_v || !index_[inv[v]].spt_d ){
+			Free();
+			return false;
+		}
+		for(int i = 0; i < k - 1; i++) index_[inv[v]].spt_v[i] = all_idx[v].first[i];
+		for(int i = 0; i < k - 1; i++) index_[inv[v]].spt_d[i] = all_idx[v].second[i];
+		index_[inv[v]].spt_v[k-1] = V;
+		index_[inv[v]].spt_d[k-1] = INF8;
+		all_idx[v].first.clear();
+		all_idx[v].second.clear();
+		prev_idx[v].first.clear();
+		prev_idx[v].second.clear();
+	}
 
 	return true;
 }
