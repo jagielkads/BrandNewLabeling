@@ -231,67 +231,42 @@ void BNLabel<kNumBitParallelRoots>
 
 template<int kNumBitParallelRoots>
 bool BNLabel<kNumBitParallelRoots>
-::StoreInfo(const char *filename){
+::StoreIndex(const char *filename){
+	int &V = this->num_v_;
 	std::ofstream ofs(filename);
 	if(ofs == false)
 		return false;
-	if(index_==NULL)
-		return false;
-	int &V = num_v_;
-	for(int v = 0; v < V; v++){
-		const index_t &idx = index_[v];
-		int counter = 0;
-		for(int i = 0 ; ; i++){
-			if(idx.spt_v[i] == V) break;
-			
-			counter++;
-		}
-		ofs << counter << std::endl;
-	}
-	ofs.close();
-	return true;
-}
-
-template<int kNumBitParallelRoots>
-bool BNLabel<kNumBitParallelRoots>
-::StoreIndex(const char *filename){
-	int &V = this->num_v_;
  	for(int v = 0; v < V; v++){
 		int count = 0;
 		while(1){
 			if(index_[v].spt_v[count++] == V)
 				break;
 		}		
-		std::cout<<count<<std::endl;
+		ofs << count << std::endl;
 	}	
-  //std::ofstream ofs(filename);
-  //uint32_t num_v = num_v_;//, num_bpr = kNumBitParallelRoots;
-  //ofs.write((const char*)&num_v,   sizeof(num_v));
-  //ofs.write((const char*)&num_bpr, sizeof(num_bpr));
+	ofs.close();
+	if (ofs.bad()) return false;
+	return true;
+}
 
-  //for (int v = 0; v < num_v_; ++v) {
-//		index_t &idx = index_[v];
-
-		//for (int i = 0; i < kNumBitParallelRoots; ++i) {
-		//int8_t d = idx.bpspt_d[i];
-		//uint64_t a = idx.bpspt_s[i][0];
-		//uint64_t b = idx.bpspt_s[i][1];
-		//ofs.write((const char*)&d, sizeof(d));
-		//ofs.write((const char*)&a, sizeof(a));
-		//ofs.write((const char*)&b, sizeof(b));
-		//}
-
-//		int32_t s;
-//		for (s = 1; idx.spt_v[s - 1] != num_v; ++s) continue;  // Find the sentinel
-//		ofs.write((const char*)&s, sizeof(s));
-//		for (int i = 0; i < s; ++i) {
-//		int32_t l = idx.spt_v[i];
-//		int8_t  d = idx.spt_d[i];
-//		ofs.write((const char*)&l, sizeof(l));
-//		ofs.write((const char*)&d, sizeof(d));
-//		}
-  
-//	}
+template<int kNumBitParallelRoots>
+bool BNLabel<kNumBitParallelRoots>
+::StoreInfo(const char *filename){
+	int &V = this->num_v_;
+	std::ofstream ofs(filename);
+	if(ofs == false)
+		return false;
+ 	for(int v = 0; v < V; v++){
+		int count = 0;
+		while(1){
+			if(index_[v].spt_v[count++] == V)
+				break;
+		}		
+		ofs << count << std::endl;
+	}	
+	ofs.close();
+	if (ofs.bad()) return false;
+	return true;
 }
 
 template<int kNumBitParallelRoots>
@@ -417,10 +392,11 @@ bool BNLabel<kNumBitParallelRoots>
 				uint8_t d1 = prev_idx_u.second[i1];
 
 				//Generating by Rule 1
+				double rule1time = -GetCurrentTimeSec();
 				for(int i2 = 0; i2 < all_idx_u.first.size(); i2++){
 					int v2 = all_idx_u.first[i2];//L(u): u <-> v2
 					uint8_t d2 = all_idx_u.second[i2];
-					if(v1 != v2 && v1 > v2){// generating label of v1 <-> v2, r(v1) < r(v2)
+					if(v1 != v2 && v1 < v2 && d2 == 1){// generating label of v1 <-> v2, r(v1) > r(v2)
 						int vidx, vlb;
 						uint8_t dlb = d1 + d2;
 						vidx = v1 > v2? v1: v2;
@@ -428,7 +404,7 @@ bool BNLabel<kNumBitParallelRoots>
 						std::pair<std::vector<int>, std::vector<uint8_t> >
 							&cur_idx_vidx = cur_idx[vidx];
 						int loc = binary_search(cur_idx_vidx.first, vlb, 0, cur_idx_vidx.first.size());
-						if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//not duplicates,generating new label
+						if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//avoid duplication,only generating new label
 							std::vector<int>::iterator fit = cur_idx_vidx.first.begin();
 							std::vector<uint8_t>::iterator sit = cur_idx_vidx.second.begin(); 
 							cur_idx_vidx.first.insert(fit+loc,vlb);
@@ -436,12 +412,14 @@ bool BNLabel<kNumBitParallelRoots>
 						}
 					}
 				}		
+				rule1time += GetCurrentTimeSec();
 
 				//Generating by Rule 2
+				double rule2time = -GetCurrentTimeSec();
 				for(int i2 = 0; i2 < inv_all_idx_u.first.size(); i2++){
 					int v2 = inv_all_idx_u.first[i2];//L[v2]: v2 <-> u
 					uint8_t d2 = inv_all_idx_u.second[i2];
-					if(v1 != v2 && v1 > v2){//generating label of v1 <-> v2
+					if(v1 != v2 && v1 < v2 && d2 == 1){//generating label of v1 <-> v2, r(v1) > r(v2)
 						int vidx, vlb;
 						uint8_t dlb = d1 + d2;
 						vidx = v1 > v2? v1: v2;
@@ -449,7 +427,7 @@ bool BNLabel<kNumBitParallelRoots>
 						std::pair<std::vector<int>, std::vector<uint8_t> >
 							&cur_idx_vidx = cur_idx[vidx];
 						int loc = binary_search(cur_idx_vidx.first, vlb, 0, cur_idx_vidx.first.size());
-						if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//not duplicates,generating new label
+						if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//avoid duplications
 							std::vector<int>::iterator fit = cur_idx_vidx.first.begin();
 							std::vector<uint8_t>::iterator sit = cur_idx_vidx.second.begin(); 
 							cur_idx_vidx.first.insert(fit+loc,vlb);
@@ -457,6 +435,9 @@ bool BNLabel<kNumBitParallelRoots>
 						}
 					}
 				}	
+				rule2time += GetCurrentTimeSec();
+				//std::cout<<"1:"<<rule1time/(rule1time+rule2time)<<std::endl;
+				//std::cout<<"2:"<<rule2time/(rule1time+rule2time)<<std::endl;
 			}
 		}/*}}}*/
 		std::cout<<"Label Generaton time:"<<gent+GetCurrentTimeSec()<<std::endl;
@@ -468,6 +449,7 @@ bool BNLabel<kNumBitParallelRoots>
 		}
 		
 		prunt = -GetCurrentTimeSec();	
+
 		//Label Pruning
 		for(int u = 0; u < V; u++){/*{{{*/
 			std::pair<std::vector<int>, std::vector<uint8_t> >
@@ -498,8 +480,8 @@ bool BNLabel<kNumBitParallelRoots>
 				if(dmin > td){//not pruned
 					prev_idx_u.first.push_back(tv);
 					prev_idx_u.second.push_back(td);
-					all_idx_u.first.push_back(tv);
-					all_idx_u.second.push_back(td);
+					//all_idx_u.first.push_back(tv);
+					//all_idx_u.second.push_back(td);
 					pnum++;
 				}
 			}
@@ -510,6 +492,7 @@ bool BNLabel<kNumBitParallelRoots>
 		std::cout<<"Time in this iteration:"<<itert+GetCurrentTimeSec()<<std::endl;
 		std::cout<<"prev num:"<<pnum<<std::endl;
 	}	
+
 	for(int v = 0 ; v < V; v++){
 		int k = all_idx[v].first.size() + 1;
 		index_[inv[v]].spt_v = (uint32_t*) malloc( k * sizeof(uint32_t));

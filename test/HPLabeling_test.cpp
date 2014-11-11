@@ -19,4 +19,5 @@ int main(int argc, char** argv){
 	
 	hdl.ConstructHDIndex(adj, inv);		
 	hdl.StoreIndex("111");
+	std::cout<<hdl.QueryDistance(0,100)<<std::endl;
 }
