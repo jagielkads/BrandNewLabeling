@@ -17,8 +17,7 @@ int main(int argc, char** argv){
 	hdl.ConstructAdj(es, adj);
 	hdl.DegreeOrdering(adj, inv);
 	
-	hdl.ConstructHDIndex(adj, inv, argv[1]);		
-	char* labelName = strcat(argv[1],".label");
-	hdl.StoreIndex(labelName);
+	hdl.ConstructHDIndex(adj, inv);		
+	hdl.StoreIndex("111");
 	std::cout<<hdl.QueryDistance(0,100)<<std::endl;
 }
