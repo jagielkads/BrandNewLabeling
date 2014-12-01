@@ -15,13 +15,6 @@ int main(int argc, char** argv){
 	std::vector<std::vector<int> > adj,adj_1;
 	std::vector<int> inv, inv_1;
 
-	//hd
-	hdl.LoadGraph(filename,es);
-	hdl.ConstructAdj(es, adj);
-	hdl.DegreeOrdering(adj, inv);
-	
-	hdl.ConstructHDIndex(adj, inv);
-	//hdl.StoreIndex(argv[3]);	
 	
 	//pll
 	pll.LoadGraph(filename, es);
@@ -31,6 +24,13 @@ int main(int argc, char** argv){
 	pll.ConstructPPLIndex(adj, inv);		
 	//pll.StoreIndex(argv[2]);
 
+	//hd
+	hdl.LoadGraph(filename,es);
+	hdl.ConstructAdj(es, adj);
+	hdl.DegreeOrdering(adj, inv);
+	
+	hdl.ConstructHDIndex(adj, inv);
+	//hdl.StoreIndex(argv[3]);	
 
 	srand(pll.GetCurrentTimeSec());
 	int N = 100;
