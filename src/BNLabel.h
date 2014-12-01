@@ -15,10 +15,9 @@ class BNLabel {
 	public:
 	bool LoadGraph(const char *filename, std::vector<std::pair<int, int> > &es);
 	bool ConstructAdj(const std::vector<std::pair<int, int> > &es, std::vector<std::vector<int> > &adj);
-	bool ConstructPLLIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv);
+	bool ConstructPPLIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv);
 	bool ConstructHDIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv);
 	bool DegreeOrdering(std::vector<std::vector<int> > &adj, std::vector<int> &inv);
-	bool GraphUpdate(std::vector<std::pair<int, int> > &es, const int num_upd);
 
 	bool StoreInfo(const char *filename);
 	bool StoreIndex(const char *filename);
@@ -44,7 +43,7 @@ class BNLabel {
 	}
 	double time_load_, time_indexing_;
 
-//	private:	
+	private:	
 	int num_v_;
 
 
@@ -111,45 +110,6 @@ bool BNLabel<kNumBitParallelRoots>
 
 template<int kNumBitParallelRoots>
 bool BNLabel<kNumBitParallelRoots>
-::GraphUpdate(std::vector<std::pair<int, int> > &es, const int num_upd){	
-	int &V = this->num_v_;
-	if(num_upd >= V || num_upd <= 0) return false;
-	int c_count = num_upd;
-	srand(this->GetCurrentTimeSec());
-	while(c_count--){
-		int flag = rand()%2;
-		if (flag == 0){//Insert Edge
-			int v = rand()%V;
-			int u = rand()%V;
-			while(v==u) u = rand()%V;
-			for(int i = 0; i < es.size(); i++){
-				if((es[i].first==v && es[i].second==u) || (es[i].first==u&&es[i].second==v)){
-					v = rand()%V;
-					u = rand()%V;	
-					while(v==i) u = rand()%V;
-					i = 0;       		
-				}
-			}
-		} else if (flag == 1){//Delete Edge
-			int del_idx = rand()%es.size();
-			int v = es[del_idx].first;
-			int u = es[del_idx].second;
-			es.erase(es.begin()+del_idx);
-			for(int i = 0; i < es.size(); i++){
-				if(es[i].first==u && es[i].second==v){
-					es.erase(es.begin()+i);
-					break;
-				}
-			}
-		} //else if (flag == 2){//Insert Edge from a random point to another
-		//} else { //if (flag == 3){ //Delete Edge
-		//}
-	}
-	return true;
-}
-
-template<int kNumBitParallelRoots>
-bool BNLabel<kNumBitParallelRoots>
 ::DegreeOrdering(std::vector<std::vector<int> > &adj, std::vector<int> &inv){	
 	int &V = this->num_v_;
 	std::vector<std::pair<int, int> > deg(this->num_v_);
@@ -174,7 +134,7 @@ bool BNLabel<kNumBitParallelRoots>
 
 template<int kNumBitParallelRoots>
 bool BNLabel<kNumBitParallelRoots>
-::ConstructPLLIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv){
+::ConstructPPLIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv){
 	int &V = num_v_;
 	std::vector<std::pair<std::vector<int>, std::vector<uint8_t> > >
 		tmp_idx(V, make_pair(std::vector<int>(1, V), std::vector<uint8_t>(1, INF8))); //Labels
@@ -272,8 +232,6 @@ void BNLabel<kNumBitParallelRoots>
 template<int kNumBitParallelRoots>
 bool BNLabel<kNumBitParallelRoots>
 ::StoreIndex(const char *filename){
-	//|V|
-	//v0 |v0| l1 d1 l2 d2
 	int &V = this->num_v_;
 	std::ofstream ofs(filename);
 	if(ofs == false)
@@ -383,8 +341,6 @@ bool BNLabel<kNumBitParallelRoots>
 	//std::vector<int> que(V);
 	//std::vector<uint8_t> dst_r(V +1, INF8);
 	
-	//to output info of each iteration
-	std::vector<std::vector<int> > itInfo;	
 
 	//Initialization: Generating labels based on directed linking	
 	pnum = 0;
@@ -394,11 +350,11 @@ bool BNLabel<kNumBitParallelRoots>
 		std::pair<std::vector<int>, std::vector<uint8_t> >
 			&prev_idx_v = prev_idx[v];
 		
-		//all_idx_v.first.push_back(v);
-		//all_idx_v.second.push_back(0);
-		//prev_idx_v.first.push_back(v);
-		//prev_idx_v.second.push_back(0);
-		//pnum++;	
+		all_idx_v.first.push_back(v);
+		all_idx_v.second.push_back(0);
+		prev_idx_v.first.push_back(v);
+		prev_idx_v.second.push_back(0);
+		pnum++;	
 		for(int r = 0; r < adj[v].size(); r++){
 			int w = adj[v][r];
 			if(w < v){//only push higher-rank label into V
@@ -410,15 +366,12 @@ bool BNLabel<kNumBitParallelRoots>
 			}
 		}
 	}	
-
-
+	
 	int iteration = 0;
 	//iteration till the end
 	while(pnum!=0){
 		std::cout<<++iteration<<" iteration go."<<std::endl;
 		pnum = 0;
-
-
 		double itert,sortt, gent, prunt;
 		itert = -GetCurrentTimeSec();
 		sortt = -GetCurrentTimeSec();
@@ -462,7 +415,7 @@ bool BNLabel<kNumBitParallelRoots>
 			for(int i1 = 0; i1 < prev_idx_u.first.size(); i1++){
 				int v1 = prev_idx_u.first[i1]; // L(u): u <-> v1
 				uint8_t d1 = prev_idx_u.second[i1];
-				
+
 				//Generating by Rule 1
 				double rule1time = -GetCurrentTimeSec();
 				for(int i2 = 0; i2 < all_idx_u.first.size(); i2++){
@@ -474,16 +427,13 @@ bool BNLabel<kNumBitParallelRoots>
 						vidx = v1 > v2? v1: v2;
 						vlb = v1 < v2? v1: v2;
 						std::pair<std::vector<int>, std::vector<uint8_t> >
-							&cur_idx_vidx = cur_idx[vidx], &all_idx_vidx = all_idx[vidx];
-						int loc = binary_search(all_idx_vidx.first, vlb, 0, all_idx_vidx.first.size());
-						if(all_idx_vidx.first.size()==0 || vlb != all_idx_vidx.first[loc]){//avoid duplications in all labels
-							loc = binary_search(cur_idx_vidx.first, vlb, 0, cur_idx_vidx.first.size());
-							if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//avoid duplications in cur labels
-								std::vector<int>::iterator fit = cur_idx_vidx.first.begin();
-								std::vector<uint8_t>::iterator sit = cur_idx_vidx.second.begin(); 
-								cur_idx_vidx.first.insert(fit+loc,vlb);
-								cur_idx_vidx.second.insert(sit+loc,dlb);
-							}
+							&cur_idx_vidx = cur_idx[vidx];
+						int loc = binary_search(cur_idx_vidx.first, vlb, 0, cur_idx_vidx.first.size());
+						if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//avoid duplication,only generating new label
+							std::vector<int>::iterator fit = cur_idx_vidx.first.begin();
+							std::vector<uint8_t>::iterator sit = cur_idx_vidx.second.begin(); 
+							cur_idx_vidx.first.insert(fit+loc,vlb);
+							cur_idx_vidx.second.insert(sit+loc,dlb);
 						}
 					}
 				}		
@@ -500,16 +450,13 @@ bool BNLabel<kNumBitParallelRoots>
 						vidx = v1 > v2? v1: v2;
 						vlb = v1 < v2? v1: v2;
 						std::pair<std::vector<int>, std::vector<uint8_t> >
-							&cur_idx_vidx = cur_idx[vidx], &all_idx_vidx = all_idx[vidx];
-						int loc = binary_search(all_idx_vidx.first, vlb, 0, all_idx_vidx.first.size());
-						if(all_idx_vidx.first.size()==0 || vlb != all_idx_vidx.first[loc]){//avoid duplications in all labels
-							loc = binary_search(cur_idx_vidx.first, vlb, 0, cur_idx_vidx.first.size());
-							if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//avoid duplications in cur labels
-								std::vector<int>::iterator fit = cur_idx_vidx.first.begin();
-								std::vector<uint8_t>::iterator sit = cur_idx_vidx.second.begin(); 
-								cur_idx_vidx.first.insert(fit+loc,vlb);
-								cur_idx_vidx.second.insert(sit+loc,dlb);
-							}
+							&cur_idx_vidx = cur_idx[vidx];
+						int loc = binary_search(cur_idx_vidx.first, vlb, 0, cur_idx_vidx.first.size());
+						if(cur_idx_vidx.first.size()==0 || vlb != cur_idx_vidx.first[loc]){//avoid duplications
+							std::vector<int>::iterator fit = cur_idx_vidx.first.begin();
+							std::vector<uint8_t>::iterator sit = cur_idx_vidx.second.begin(); 
+							cur_idx_vidx.first.insert(fit+loc,vlb);
+							cur_idx_vidx.second.insert(sit+loc,dlb);
 						}
 					}
 				}	
@@ -519,6 +466,7 @@ bool BNLabel<kNumBitParallelRoots>
 			}
 		}/*}}}*/
 		std::cout<<"Label Generaton time:"<<gent+GetCurrentTimeSec()<<std::endl;
+
 		//Clearing prev label
 		for(int u = 0; u < V; u++){
 			prev_idx[u].first.clear();
@@ -555,11 +503,10 @@ bool BNLabel<kNumBitParallelRoots>
 					}
 				}
 				if(dmin > td){//not pruned
-					//if(dmin!=INT_MAX) std::cout<<"dmin:"<<dmin<<"+td:"<<td<<",INTMAX:"<<INT_MAX<<std::endl;
 					prev_idx_u.first.push_back(tv);
 					prev_idx_u.second.push_back(td);
-					all_idx_u.first.push_back(tv);
-					all_idx_u.second.push_back(td);
+					//all_idx_u.first.push_back(tv);
+					//all_idx_u.second.push_back(td);
 					pnum++;
 				}
 			}
@@ -569,18 +516,6 @@ bool BNLabel<kNumBitParallelRoots>
 		std::cout<<"Label Pruning time:"<<prunt+GetCurrentTimeSec()<<std::endl;
 		std::cout<<"Time in this iteration:"<<itert+GetCurrentTimeSec()<<std::endl;
 		std::cout<<"prev num:"<<pnum<<std::endl;
-		//for(int v = 0; v < V; v++){
-		//	std::cout<<v<<":";
-		//	for(int u = 0; u < all_idx[v].first.size();u++){
-		//		std::cout<<all_idx[v].first[u]<<",";
-		//	}
-		//	std::cout<<std::endl;
-		//}
-		std::vector<int> thisItInfo(V);
-		for(int v = 0 ; v < V; v++){
-			thisItInfo[v] = prev_idx[v].first.size();
-		}
-		itInfo.push_back(thisItInfo);
 	}	
 	/*
 	char* itName = std::strcat(dName, ".info");
@@ -594,45 +529,17 @@ bool BNLabel<kNumBitParallelRoots>
 	ofs.close();
 	*/
 	for(int v = 0 ; v < V; v++){
-		/*
-		int k = all_idx[v].first.size() + 2;
+		int k = all_idx[v].first.size() + 1;
 		index_[inv[v]].spt_v = (uint32_t*) malloc( k * sizeof(uint32_t));
 		index_[inv[v]].spt_d = (uint8_t*) malloc( k * sizeof(uint8_t));
 		if(!index_[inv[v]].spt_v || !index_[inv[v]].spt_d ){
 			Free();
 			return false;
 		}
-		
-
-		//We restore the ranking id here
-		for(int i = 0; i < k - 2; i++) index_[inv[v]].spt_v[i] = all_idx[v].first[i];
-		for(int i = 0; i < k - 2; i++) index_[inv[v]].spt_d[i] = all_idx[v].second[i];
-		index_[inv[v]].spt_v[k-2] = inv[v];
-		index_[inv[v]].spt_d[k-2] = 0;
+		for(int i = 0; i < k - 1; i++) index_[inv[v]].spt_v[i] = all_idx[v].first[i];
+		for(int i = 0; i < k - 1; i++) index_[inv[v]].spt_d[i] = all_idx[v].second[i];
 		index_[inv[v]].spt_v[k-1] = V;
 		index_[inv[v]].spt_d[k-1] = INF8;
-		
-		all_idx[v].first.clear();
-		all_idx[v].second.clear();
-		prev_idx[v].first.clear();
-		prev_idx[v].second.clear();
-		*/
-		
-		//We keep the ranking as the vertex id here
-		int k = all_idx[v].first.size() + 2;
-		index_[v].spt_v = (uint32_t*) malloc( k * sizeof(uint32_t));
-		index_[v].spt_d = (uint8_t*) malloc( k * sizeof(uint8_t));
-		if(!index_[v].spt_v || !index_[v].spt_d ){
-			Free();
-			return false;
-		}
-		for(int i = 0; i < k - 2; i++) index_[v].spt_v[i] = all_idx[v].first[i];
-		for(int i = 0; i < k - 2; i++) index_[v].spt_d[i] = all_idx[v].second[i];
-		index_[v].spt_v[k-2] = v;
-		index_[v].spt_d[k-2] = 0;
-		index_[v].spt_v[k-1] = V;
-		index_[v].spt_d[k-1] = INF8;
-		
 		all_idx[v].first.clear();
 		all_idx[v].second.clear();
 		prev_idx[v].first.clear();
