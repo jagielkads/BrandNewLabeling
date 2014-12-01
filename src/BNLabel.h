@@ -16,7 +16,7 @@ class BNLabel {
 	bool LoadGraph(const char *filename, std::vector<std::pair<int, int> > &es);
 	bool ConstructAdj(const std::vector<std::pair<int, int> > &es, std::vector<std::vector<int> > &adj);
 	bool ConstructPLLIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv);
-	bool ConstructHDIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv, char* dName);
+	bool ConstructHDIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv);
 	bool DegreeOrdering(std::vector<std::vector<int> > &adj, std::vector<int> &inv);
 	bool GraphUpdate(std::vector<std::pair<int, int> > &es, const int num_upd);
 
@@ -278,18 +278,20 @@ bool BNLabel<kNumBitParallelRoots>
 	std::ofstream ofs(filename);
 	if(ofs == false)
 		return false;
-	//ofs << V << std::endl;
+	ofs << V << std::endl;
+	std::cout << V << std::endl;
+	int cnt = 0;
  	for(int v = 0; v < V; v++){
 		int count = 0;
-		int max_d = 0;
 		while(1){
 			int label_v = index_[v].spt_v[count];
-			if(label_v == v)
+			if(label_v == V)
 				break;
 			int label_d = index_[v].spt_d[count++];
-			if(label_d > max_d)
-				max_d = label_d;
+			cnt++;
+
 		}	
+		ofs << count << std::endl;
 		//if(count != 0)	
 		//	ave_d = (ave_d+0.5)/count;
 		//else
@@ -297,7 +299,6 @@ bool BNLabel<kNumBitParallelRoots>
 			
 		//ofs << v<< " " << count<< " " << ave_d<<std::endl;
 		//ofs << v<< " " << count<< " " << max_d<<std::endl;
-		ofs << count << "," << max_d << std::endl;
 		count = 0;
 		//while(1){
 		//	int label = index_[v].spt_v[count];
@@ -309,6 +310,7 @@ bool BNLabel<kNumBitParallelRoots>
 		//}
 		//ofs << std::endl;
 	}	
+	ofs << cnt << std::endl;
 	ofs.close();
 	if (ofs.bad()) return false;
 	return true;
@@ -368,7 +370,7 @@ int BNLabel<kNumBitParallelRoots>
 
 template<int kNumBitParallelRoots>
 bool BNLabel<kNumBitParallelRoots>
-::ConstructHDIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv, char* dName){
+::ConstructHDIndex(const std::vector<std::vector<int> > &adj, const std::vector<int> &inv){
 	int &V = num_v_;
 	std::vector<std::pair<std::vector<int>, std::vector<uint8_t> > >
 		all_idx(V); //all labels
@@ -540,7 +542,7 @@ bool BNLabel<kNumBitParallelRoots>
 
 				int dmin = INT_MAX;
 				for(int i1 = 0, i2 = 0; ;){
-					if(i1==all_idx_u.first.size() || i2==all_idx_v.first.size() || dmin < td) break;
+					if(i1==all_idx_u.first.size() || i2==all_idx_v.first.size() || dmin <= td) break;
 					int v1 = all_idx_u.first[i1], v2 = all_idx_v.first[i2];
 					if( v1 == v2 ){
 						int dd = all_idx_u.second[i1] + all_idx_v.second[i2];
@@ -580,6 +582,7 @@ bool BNLabel<kNumBitParallelRoots>
 		}
 		itInfo.push_back(thisItInfo);
 	}	
+	/*
 	char* itName = std::strcat(dName, ".info");
 	std::ofstream ofs(itName);
 	for(int u = 0; u < V; u++){
@@ -589,7 +592,7 @@ bool BNLabel<kNumBitParallelRoots>
 		ofs << std::endl;
 	}
 	ofs.close();
-
+	*/
 	for(int v = 0 ; v < V; v++){
 		/*
 		int k = all_idx[v].first.size() + 2;
